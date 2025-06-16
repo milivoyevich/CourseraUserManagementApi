@@ -8,42 +8,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using CourseraUserManagementApi.Models;
+using CourseraUserManagementApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
 var app = builder.Build();
 
-// Middleware for logging requests
-app.Use(async (context, next) =>
-{
-    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
-    await next();
-});
-
-// Middleware for error handling
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (Exception ex)
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError($"Unhandled Exception: {ex.Message}");
-        context.Response.StatusCode = 500;
-        await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
-    }
-});
+app.UseCors("AllowAll");
+app.UseMiddleware<LoggingMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 // In-memory user storage
-var users = new List<User>();
+var users = MockData.Users; // new List<User>();
 
 //Get all
 app.MapGet("/users", (HttpContext context) =>
 {
-    return users;
+    return context.Response.WriteAsync(JsonSerializer.Serialize(users));
 });
 // Create User
 app.MapPost("/users", (HttpContext context, User user) =>
@@ -87,10 +73,3 @@ app.MapDelete("/users/{id:int}", (HttpContext context, int id) =>
 });
 
 app.Run();
-
-record User
-{
-    public int Id { get; set; }
-    public string Username { get; set; }
-    public string Email { get; set; }
-}
