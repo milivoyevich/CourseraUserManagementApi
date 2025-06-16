@@ -40,6 +40,11 @@ app.Use(async (context, next) =>
 // In-memory user storage
 var users = new List<User>();
 
+//Get all
+app.MapGet("/users", (HttpContext context) =>
+{
+    return users;
+});
 // Create User
 app.MapPost("/users", (HttpContext context, User user) =>
 {
